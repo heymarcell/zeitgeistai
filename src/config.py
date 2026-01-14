@@ -37,8 +37,8 @@ class Settings(BaseSettings):
     
     # Synthesis (best quality)
     ANTHROPIC_API_KEY: str = ""
-    CLAUDE_MODEL_SYNTHESIS: str = "claude-opus-4.5"    # Narrative synthesis
-    CLAUDE_MODEL_ILLUSTRATION: str = "claude-sonnet-4.5"  # Illustration concepts
+    CLAUDE_MODEL_SYNTHESIS: str = "claude-sonnet-4-20250514"    # Claude Sonnet 4
+    CLAUDE_MODEL_ILLUSTRATION: str = "claude-sonnet-4-20250514"  # Claude Sonnet 4
     
     # Verification (adversarial judge)
     OPENAI_API_KEY: str = ""
@@ -49,7 +49,7 @@ class Settings(BaseSettings):
     # =========================================================================
     BLUESKY_HANDLE: str = ""
     BLUESKY_APP_PASSWORD: str = ""
-    BLUESKY_SAMPLE_SIZE: int = 200
+    BLUESKY_SAMPLE_SIZE: int = 100  # API limit is 100
     
     # =========================================================================
     # Mastodon Configuration

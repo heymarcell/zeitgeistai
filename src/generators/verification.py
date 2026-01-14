@@ -46,9 +46,8 @@ class MultiLayerVerifier:
     def _get_gemini(self):
         """Get or create Gemini client."""
         if self.gemini_client is None and settings.GEMINI_API_KEY:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            self.gemini_client = genai.GenerativeModel(settings.GEMINI_MODEL_EXTRACTION)
+            from google import genai
+            self.gemini_client = genai.Client(api_key=settings.GEMINI_API_KEY)
         return self.gemini_client
     
     def _get_anthropic(self):
@@ -170,7 +169,10 @@ Text:
 
 Factual claims (one per line):"""
             
-            response = client.generate_content(prompt)
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL_EXTRACTION,
+                contents=prompt
+            )
             claims = [line.strip() for line in response.text.strip().split("\n") if line.strip()]
             return claims[:10]  # Limit to 10 claims
             
@@ -231,7 +233,10 @@ Evidence: {evidence}
 
 Does the evidence directly support the claim? Answer only "SUPPORTED" or "NOT_SUPPORTED"."""
             
-            response = client.generate_content(prompt)
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL_EXTRACTION,
+                contents=prompt
+            )
             is_supported = "SUPPORTED" in response.text.upper() and "NOT_SUPPORTED" not in response.text.upper()
             return is_supported, evidence
             
