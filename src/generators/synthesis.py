@@ -34,9 +34,8 @@ class NarrativeSynthesizer:
             return None
             
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GEMINI_API_KEY)
-            return genai.GenerativeModel(model_name or settings.GEMINI_MODEL_SUMMARIZATION)
+            from google import genai
+            return genai.Client(api_key=settings.GEMINI_API_KEY)
         except Exception as e:
             logger.warning("gemini_init_failed", error=str(e))
             return None
@@ -95,9 +94,9 @@ class NarrativeSynthesizer:
     
     def _extract_entities(self, clusters: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Extract entities and claims from clusters using Gemini Flash."""
-        model = self._get_gemini(settings.GEMINI_MODEL_EXTRACTION)
+        client = self._get_gemini()
         
-        if not model:
+        if not client:
             # Fallback: extract from cluster metadata
             entities = []
             for cluster in clusters[:3]:
@@ -120,7 +119,10 @@ Respond in JSON:
     "claims": ["Specific factual claim 1", "Claim 2"]
 }}"""
             
-            response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=settings.GEMINI_MODEL_EXTRACTION,
+                contents=prompt
+            )
             text = response.text
             
             if "{" in text:
@@ -134,12 +136,12 @@ Respond in JSON:
     
     def _summarize_clusters(self, clusters: List[Dict[str, Any]]) -> List[str]:
         """Summarize each cluster using Gemini Pro."""
-        model = self._get_gemini(settings.GEMINI_MODEL_SUMMARIZATION)
+        client = self._get_gemini()
         
         summaries = []
         
         for cluster in clusters:
-            if model:
+            if client:
                 try:
                     topics = ", ".join(cluster.get("topics", [])[:5])
                     articles = cluster.get("articles", [])[:3]
@@ -152,7 +154,10 @@ Virality score: {cluster.get('virality_score', 0):.2f}
 
 Write a concise summary of what's happening:"""
                     
-                    response = model.generate_content(prompt)
+                    response = client.models.generate_content(
+                        model=settings.GEMINI_MODEL_SUMMARIZATION,
+                        contents=prompt
+                    )
                     summaries.append(response.text.strip())
                     
                 except Exception as e:
@@ -273,7 +278,7 @@ Respond in JSON:
     
     def _synthesize_with_gemini(
         self,
-        model,
+        client,  # Now a genai.Client
         digest_id: str,
         edition: str,
         extracted: Dict[str, Any],
@@ -297,7 +302,10 @@ Respond in JSON:
     "key_takeaways": ["Point 1", "Point 2", "Point 3"]
 }}"""
         
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model=settings.GEMINI_MODEL_SUMMARIZATION,
+            contents=prompt
+        )
         text = response.text
         
         if "{" in text:

@@ -61,7 +61,12 @@ def _sync_collect_gdelt() -> List[Dict[str, Any]]:
     now = datetime.now(timezone.utc)
     lookback = now - timedelta(hours=settings.GDELT_LOOKBACK_HOURS)
     
-    # Optimized query
+    # DATE field format is YYYYMMDDHHMMSS (e.g., 20260114193000)
+    lookback_date_int = int(lookback.strftime('%Y%m%d%H%M%S'))
+    now_date_int = int(now.strftime('%Y%m%d%H%M%S'))
+    
+    # Use partition pruning for date, then filter on DATE field for hour
+    # _PARTITIONTIME is midnight-only, but DATE contains actual article time
     query = f"""
     SELECT 
         DocumentIdentifier as url,
@@ -73,8 +78,9 @@ def _sync_collect_gdelt() -> List[Dict[str, Any]]:
         V2Organizations as organizations
     FROM `gdelt-bq.gdeltv2.gkg_partitioned`
     WHERE 
-        _PARTITIONTIME >= TIMESTAMP('{lookback.strftime('%Y-%m-%d %H:%M:%S')}')
-        AND _PARTITIONTIME < TIMESTAMP('{now.strftime('%Y-%m-%d %H:%M:%S')}')
+        DATE(_PARTITIONTIME) >= DATE('{lookback.strftime('%Y-%m-%d')}')
+        AND DATE >= {lookback_date_int}
+        AND DATE < {now_date_int}
         AND V2Themes IS NOT NULL
         AND DocumentIdentifier IS NOT NULL
     LIMIT {settings.GDELT_MAX_ARTICLES}

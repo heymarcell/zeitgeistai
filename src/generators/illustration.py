@@ -126,10 +126,9 @@ def _generate_with_gemini(
         return None
     
     try:
-        import google.generativeai as genai
+        from google import genai
         
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-        model = genai.GenerativeModel("gemini-2.5-flash")
+        client = genai.Client(api_key=settings.GEMINI_API_KEY)
         
         prompt = f"""Create an illustration concept for this news digest.
 
@@ -147,7 +146,10 @@ Respond ONLY with this JSON:
     "avoid": ["thing1", "thing2"]
 }}"""
         
-        response = model.generate_content(prompt)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt
+        )
         text = response.text
         
         if "{" in text and "}" in text:
