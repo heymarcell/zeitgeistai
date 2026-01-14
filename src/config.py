@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     # =========================================================================
     # Extraction (high-volume, cheap)
     GEMINI_API_KEY: str = ""  # Required for generation
-    GEMINI_MODEL_EXTRACTION: str = "gemini-2.5-flash"  # Entity/claim extraction
-    GEMINI_MODEL_SUMMARIZATION: str = "gemini-3-pro"   # Article summarization
+    GEMINI_MODEL_EXTRACTION: str = "gemini-2.5-flash"       # Entity/claim extraction
+    GEMINI_MODEL_SUMMARIZATION: str = "gemini-3-pro-preview" # Article summarization
     
     # Synthesis (best quality)
     ANTHROPIC_API_KEY: str = ""

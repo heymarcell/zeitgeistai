@@ -28,6 +28,19 @@ VECTOR_SIZE = 768  # Gemini gemini-embedding-001 with MRL
 _client: Optional[QdrantClient] = None
 
 
+def _arc_id_to_uuid(arc_id: str) -> str:
+    """
+    Convert an 8-character hex arc_id to a valid UUID string.
+    
+    Qdrant requires point IDs to be either unsigned integers or UUIDs.
+    Our arc_ids are 8-char hex strings. We pad them to create valid UUIDs.
+    """
+    # Pad the 8-char hex to 32 chars (UUID without dashes)
+    padded = arc_id.ljust(32, '0')
+    # Format as UUID: 8-4-4-4-12
+    return f"{padded[:8]}-{padded[8:12]}-{padded[12:16]}-{padded[16:20]}-{padded[20:32]}"
+
+
 def get_qdrant_client() -> Optional[QdrantClient]:
     """
     Get or create Qdrant client singleton.
@@ -131,7 +144,7 @@ def upsert_story_arc(arc: Dict[str, Any]) -> bool:
             payload["velocity_history"] = list(payload["velocity_history"])
         
         point = PointStruct(
-            id=arc_id,  # Use arc_id as point ID
+            id=_arc_id_to_uuid(arc_id),  # Convert to valid UUID
             vector=fingerprint,
             payload=payload,
         )
@@ -229,9 +242,10 @@ def get_all_arcs(max_age_hours: int = 168) -> Dict[str, Dict[str, Any]]:
             
             for point in results:
                 arc = point.payload.copy()
-                arc["arc_id"] = point.id
+                # Convert UUID back to original arc_id format  
+                arc["arc_id"] = str(point.id)[:8] if isinstance(point.id, str) else point.payload.get("arc_id", str(point.id))
                 arc["fingerprint"] = list(point.vector) if point.vector else []
-                arcs[point.id] = arc
+                arcs[arc["arc_id"]] = arc
             
             if offset is None:
                 break
@@ -253,7 +267,7 @@ def delete_arc(arc_id: str) -> bool:
     try:
         client.delete(
             collection_name=STORY_ARCS_COLLECTION,
-            points_selector=models.PointIdsList(points=[arc_id]),
+            points_selector=models.PointIdsList(points=[_arc_id_to_uuid(arc_id)]),
         )
         logger.debug("qdrant_arc_deleted", arc_id=arc_id)
         return True
