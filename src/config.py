@@ -86,6 +86,11 @@ class Settings(BaseSettings):
     DIGEST_FREQUENCY_HOURS: int = 4
     
     # =========================================================================
+    # Feature Flags
+    # =========================================================================
+    USE_ASYNC_COLLECTORS: bool = True  # Use async collectors for parallel fetching
+    
+    # =========================================================================
     # Alerting
     # =========================================================================
     DISCORD_WEBHOOK_URL: Optional[str] = None
