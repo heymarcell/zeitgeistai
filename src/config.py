@@ -64,7 +64,10 @@ class Settings(BaseSettings):
     MIN_CLUSTER_SIZE: int = 5
     MIN_SAMPLES: int = 2
     UMAP_N_COMPONENTS: int = 50
-    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    
+    # Embedding Configuration (Cloud)
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"  # Cloud embeddings
+    EMBEDDING_DIMS: int = 768  # MRL-reduced dimension (from 3072)
     
     # =========================================================================
     # Generation Configuration

@@ -22,7 +22,7 @@ logger = structlog.get_logger()
 
 # Collection configuration
 STORY_ARCS_COLLECTION = "zeitgeist_story_arcs"
-VECTOR_SIZE = 384  # sentence-transformers all-MiniLM-L6-v2 dimension
+VECTOR_SIZE = 768  # Gemini gemini-embedding-001 with MRL
 
 # Singleton client
 _client: Optional[QdrantClient] = None

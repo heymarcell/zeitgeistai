@@ -5,6 +5,7 @@ from src.processors.clustering import cluster_articles
 from src.processors.scoring import calculate_virality_scores
 from src.processors.story_arc import match_clusters_to_story_arcs, story_arc_registry
 from src.processors.contrarian import calculate_narrative_divergence, get_hidden_stories
+from src.processors.embeddings import embed_texts, embed_single, EMBEDDING_DIMS
 
 __all__ = [
     "deduplicate_articles",
@@ -14,4 +15,7 @@ __all__ = [
     "story_arc_registry",
     "calculate_narrative_divergence",
     "get_hidden_stories",
+    "embed_texts",
+    "embed_single",
+    "EMBEDDING_DIMS",
 ]

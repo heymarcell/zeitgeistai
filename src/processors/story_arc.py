@@ -31,8 +31,8 @@ STORY_ARC_FILE = Path(settings.OUTPUT_DIR) / "story_arcs.json"
 # Similarity threshold for matching to existing story
 SIMILARITY_THRESHOLD = 0.85
 
-# Vector dimension for Qdrant (sentence-transformers all-MiniLM-L6-v2)
-VECTOR_SIZE = 384
+# Vector dimension for Qdrant (Gemini gemini-embedding-001 with MRL)
+VECTOR_SIZE = 768
 
 
 class StoryArcRegistry:

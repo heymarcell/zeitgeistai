@@ -2,38 +2,27 @@
 Clustering Module
 
 Groups related articles using HDBSCAN with UMAP dimensionality reduction.
+Uses Gemini cloud embeddings instead of local sentence-transformers.
 """
 
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any
 import numpy as np
 import structlog
 
-from sentence_transformers import SentenceTransformer
 import hdbscan
 import umap
 
 from src.config import settings
+from src.processors.embeddings import embed_texts, EMBEDDING_DIMS
 
 logger = structlog.get_logger()
-
-# Lazy-load embedding model
-_embedding_model = None
-
-
-def get_embedding_model() -> SentenceTransformer:
-    """Get or create embedding model (lazy loading)."""
-    global _embedding_model
-    if _embedding_model is None:
-        logger.info("loading_embedding_model", model=settings.EMBEDDING_MODEL)
-        _embedding_model = SentenceTransformer(settings.EMBEDDING_MODEL)
-    return _embedding_model
 
 
 def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """
     Cluster articles by semantic similarity.
     
-    Uses sentence-transformers for embeddings, UMAP for dimensionality
+    Uses Gemini cloud embeddings, UMAP for dimensionality
     reduction, and HDBSCAN for clustering.
     
     Args:
@@ -43,7 +32,7 @@ def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         List of cluster dictionaries, each containing:
         - cluster_id: Cluster identifier
         - articles: List of articles in the cluster
-        - centroid: Cluster centroid embedding
+        - centroid: Cluster centroid embedding (768 dims)
         - topics: Dominant topics in the cluster
     """
     if not articles:
@@ -69,15 +58,21 @@ def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         
         texts.append(text if text.strip() else "unknown")
     
-    # Generate embeddings
-    model = get_embedding_model()
-    embeddings = model.encode(texts, show_progress_bar=False)
-    logger.info("embeddings_generated", shape=embeddings.shape)
+    # Generate embeddings using Gemini cloud API
+    embedding_list = embed_texts(texts, task_type="CLUSTERING")
+    embeddings = np.array(embedding_list)
+    logger.info("embeddings_generated", shape=embeddings.shape, source="gemini_cloud")
+    
+    # Handle edge case: too few articles
+    if len(embeddings) < settings.MIN_CLUSTER_SIZE:
+        logger.info("too_few_articles_for_clustering", count=len(embeddings))
+        return _create_single_cluster(articles, embeddings)
     
     # Apply UMAP for dimensionality reduction
-    if len(embeddings) > settings.UMAP_N_COMPONENTS:
+    n_components = min(settings.UMAP_N_COMPONENTS, len(embeddings) - 2)
+    if len(embeddings) > n_components + 1:
         reducer = umap.UMAP(
-            n_components=min(settings.UMAP_N_COMPONENTS, len(embeddings) - 1),
+            n_components=n_components,
             metric='cosine',
             random_state=42
         )
@@ -113,7 +108,7 @@ def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     # Calculate cluster metadata
     result = []
     for cluster_id, cluster_data in clusters.items():
-        # Calculate centroid
+        # Calculate centroid using ORIGINAL embeddings (768 dims)
         cluster_embeddings = np.array(cluster_data["embeddings"])
         centroid = np.mean(cluster_embeddings, axis=0)
         
@@ -134,7 +129,7 @@ def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         result.append({
             "cluster_id": cluster_id,
             "articles": cluster_data["articles"],
-            "centroid": centroid.tolist(),
+            "centroid": centroid.tolist(),  # 768-dim for Qdrant
             "topics": [t[0] for t in top_themes],
             "size": len(cluster_data["articles"])
         })
@@ -149,8 +144,39 @@ def cluster_articles(articles: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return result
 
 
+def _create_single_cluster(
+    articles: List[Dict[str, Any]], 
+    embeddings: np.ndarray
+) -> List[Dict[str, Any]]:
+    """Create a single cluster when too few articles for HDBSCAN."""
+    if len(articles) == 0:
+        return []
+    
+    centroid = np.mean(embeddings, axis=0)
+    
+    # Extract themes
+    all_themes = []
+    for article in articles:
+        themes = article.get("themes", [])
+        if isinstance(themes, list):
+            all_themes.extend(themes)
+    
+    theme_counts = {}
+    for theme in all_themes:
+        theme_counts[theme] = theme_counts.get(theme, 0) + 1
+    
+    top_themes = sorted(theme_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    
+    return [{
+        "cluster_id": 0,
+        "articles": articles,
+        "centroid": centroid.tolist(),
+        "topics": [t[0] for t in top_themes],
+        "size": len(articles)
+    }]
+
+
 if __name__ == "__main__":
-    # Test clustering
     import logging
     logging.basicConfig(level=logging.INFO)
     
@@ -165,3 +191,4 @@ if __name__ == "__main__":
     print(f"Found {len(clusters)} clusters")
     for c in clusters:
         print(f"Cluster {c['cluster_id']}: {c['size']} articles, topics: {c['topics']}")
+        print(f"  Centroid dims: {len(c['centroid'])}")
