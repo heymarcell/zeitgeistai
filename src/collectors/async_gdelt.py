@@ -45,14 +45,17 @@ def _sync_collect_gdelt() -> List[Dict[str, Any]]:
     from google.cloud import bigquery
     from google.oauth2 import service_account
     
+    # Get project from settings
+    project = settings.GOOGLE_CLOUD_PROJECT
+    
     # Initialize client
     if settings.GOOGLE_APPLICATION_CREDENTIALS:
         credentials = service_account.Credentials.from_service_account_file(
             settings.GOOGLE_APPLICATION_CREDENTIALS
         )
-        client = bigquery.Client(credentials=credentials)
+        client = bigquery.Client(credentials=credentials, project=project)
     else:
-        client = bigquery.Client()
+        client = bigquery.Client(project=project)
     
     # Calculate time window
     now = datetime.now(timezone.utc)

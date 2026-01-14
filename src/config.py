@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     # Google Cloud (BigQuery)
     # =========================================================================
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
+    GOOGLE_CLOUD_PROJECT: Optional[str] = None  # For BigQuery ADC
     GDELT_LOOKBACK_HOURS: int = 4
     GDELT_MAX_ARTICLES: int = 5000
     
